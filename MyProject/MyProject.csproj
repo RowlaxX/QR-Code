@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="resources\bitmap_convolution.bmp" />
+    <None Remove="resources\bitmap_effect.bmp" />
+    <None Remove="resources\bitmap_hide.bmp" />
+    <None Remove="resources\bitmap_histogram.bmp" />
+    <None Remove="resources\bitmap_open.bmp" />
+    <None Remove="resources\bitmap_recover.bmp" />
+    <None Remove="resources\bitmap_resize.bmp" />
+    <None Remove="resources\bitmap_rotate.bmp" />
+    <None Remove="resources\bitmap_save.bmp" />
+    <None Remove="resources\fractal.bmp" />
+    <None Remove="resources\qrcode_create.bmp" />
+    <None Remove="resources\qrcode_read.bmp" />
+    <None Remove="resources\switch_io.png" />
+    <None Remove="switch_io.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="resources\bitmap_convolution.bmp" />
+    <Resource Include="resources\bitmap_effect.bmp" />
+    <Resource Include="resources\bitmap_hide.bmp" />
+    <Resource Include="resources\bitmap_histogram.bmp" />
+    <Resource Include="resources\bitmap_open.bmp" />
+    <Resource Include="resources\bitmap_recover.bmp" />
+    <Resource Include="resources\bitmap_resize.bmp" />
+    <Resource Include="resources\bitmap_rotate.bmp" />
+    <Resource Include="resources\bitmap_save.bmp" />
+    <Resource Include="resources\fractal.bmp" />
+    <Resource Include="resources\qrcode_create.bmp" />
+    <Resource Include="resources\qrcode_read.bmp" />
+  </ItemGroup>
+
+</Project>
