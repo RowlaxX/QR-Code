@@ -60,12 +60,16 @@ namespace Bitmap
                     palette.SetPixel(i, j, MandelbrotPalette[j]);
             palette.Save("palette.bmp");
         }
-        public static BitMap Mandelbrot(int height, int width, uint maxIteration)
+        public static BitMap Mandelbrot(int height, int width, uint maxIteration, double topLeftY, double topLeftX, double bottomRightY, double bottomRightX)
         {
             if (height <= 0)
                 throw new ArgumentOutOfRangeException(nameof(height));
             if (width <= 0)
                 throw new ArgumentOutOfRangeException(nameof(width));
+            if (topLeftX >= bottomRightX)
+                throw new ArgumentException("topLeftX must be less than bottomRightX.");
+            if (topLeftY <= bottomRightY)
+                throw new ArgumentException("topLeftY must be greater than bottomRightY.");
 
             InitMandelbrotPalette();
 
@@ -79,8 +83,8 @@ namespace Bitmap
                 for (int j = 0; j < width; j++)
                 {
                     fractal.SetPixel(i, j, Colors.BLACK);
-                    y0 = ((double)i / (double)height) * 3.0 - 1.5;
-                    x0 = ((double)j / (double)width) * 3.0 - 2.0;
+                    y0 = ((double)i / (double)height) * (topLeftY - bottomRightY) + bottomRightY;
+                    x0 = ((double)j / (double)width) * (bottomRightX - topLeftX) + topLeftX;
                     x = 0;
                     y = 0;
 
@@ -103,10 +107,6 @@ namespace Bitmap
                 }
 
             return fractal;
-        }
-        public static BitMap Mandelbrot(int heigth, int width)
-        {
-            return Mandelbrot(heigth, width, 1000);
         }
     }
 }

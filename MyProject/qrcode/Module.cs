@@ -82,7 +82,7 @@ namespace QRCodes
                 throw new ArgumentNullException(nameof(another));
 
             this.Type = another.Type;
-            this.State = another.State;
+            this.state = another.State;
             this.Locked = locked;
         }
         

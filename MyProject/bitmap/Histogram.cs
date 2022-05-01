@@ -29,19 +29,17 @@ namespace Bitmap
         //Methodes
         public BitMap ToBitmap()
         {
-            BitMap image = new BitMap(200, 256);
-            int scale = MaxBlue() + MaxGreen() + MaxRed();
+            BitMap image = new(200, 256);
+            int scale = Math.Max(MaxBlue(), Math.Max(MaxGreen(), MaxRed()));
 
             int tR, tB, tG;
-            int maxT;
             for (int  x = 0; x < 256; x++)
             {
-                tR = (int)( ((double)R[x] / scale) * 200.0);
+                tR = (int)(((double)R[x] / scale) * 200.0);
                 tB = (int)(((double)B[x] / scale) * 200.0);
                 tG = (int)(((double)G[x] / scale) * 200.0);
-                maxT = Math.Max(tR, Math.Max(tB, tG));
 
-                for (int y = 0;  y < maxT; y++)
+                for (int y = 0;  y < 200; y++)
                     image.SetPixel(y, x, new Color(
                         (byte)(y < tR ? 0x55 : 0xFF),
                         (byte)(y < tG ? 0x55 : 0xFF),

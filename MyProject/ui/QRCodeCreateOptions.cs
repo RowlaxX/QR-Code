@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using QRCodes;
 using System.Windows.Controls;
+using System.IO;
 
 namespace MyProject.ui
 {

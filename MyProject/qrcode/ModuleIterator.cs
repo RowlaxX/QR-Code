@@ -22,6 +22,7 @@ namespace QRCodes
         public int Y { get; private set; }
         public Module Current { get { return qrcode.GetModule(Y, X); } }
         public bool GoingUp { get; private set; } = true;
+        public QRCode QRCode { get { return qrcode; } }
 
         //Constructeurs
         public ModuleIterator(QRCode qrcode)

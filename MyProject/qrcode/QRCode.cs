@@ -3,6 +3,8 @@ using System;
 using ReedSolomon;
 using Bitmap;
 using QRCodes.Reader;
+using System.Text;
+using System.IO;
 
 namespace QRCodes
 {
@@ -720,7 +722,7 @@ namespace QRCodes
         }
         private static void Write(ModuleIterator iterator, byte b)
         {
-            foreach(bool e in Utils.GetEndiannessBits(b, 8))
+            foreach (bool e in Utils.GetEndiannessBits(b, 8))
             {
                 iterator.Current.State = e ? Module.Status.Enabled : Module.Status.Disabled;
                 iterator.Next();
