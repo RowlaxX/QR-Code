@@ -58,7 +58,7 @@ namespace QRCodes
                 m.Lock();
 
             //Finalizing
-            qrcode.Finalize(mask);
+            qrcode.Mask(mask);
             return qrcode;
         }
         public static QRCode Read(BitMap image)
@@ -148,53 +148,45 @@ namespace QRCodes
         private readonly Module[,] modules;
 
         //Constructeurs
-        internal QRCode(int version, Payload payload, Mask mask, ErrorCorrection.Levels ecLevel)
+        internal QRCode(int version, Payload payload, Mask mask, ErrorCorrection.Levels ecLevel) : this(new QRCodeInformation(version, payload, mask, ecLevel)) {}
+        internal QRCode(QRCodeInformation infos)
         {
-            this.Informations = new QRCodeInformation(version, payload, mask, ecLevel);
+            if (infos == null)
+                throw new ArgumentNullException(nameof(infos));
+
+            this.Informations = infos;
             this.modules = new Module[Size, Size];
 
             //Writing modules
-            InitModules();
+            WriteModules();
             WritePayloadData(this);
+
+            //Applying mask
+            if (infos.AutoMask)
+                ApplyBestMask();
+            else
+                Mask(infos.Mask);
 
             //Locking
             foreach (Module m in modules)
                 m.Lock();
-
-            //Finalizing
-            Finalize(Informations.AutoMask ? GetBestMask(this) : Informations.Mask);
         }
         private QRCode(int version)
         {
             this.Informations = new QRCodeInformation(version);
             this.modules = new Module[Size, Size];
-            InitModules();
+            WriteModules();
         }
         private QRCode(QRCode another)
         {
             this.Informations = another.Informations;
             this.AppliedMask = another.AppliedMask;
             this.Penalty = another.Penalty;
+
             this.modules = new Module[another.Size, another.Size];
             for (int i = 0; i < Size; i++)
                 for (int j = 0; j < Size; j++)
                     this.modules[i, j] = another.modules[i, j].Clone();
-        }
-
-        private void InitModules()
-        {
-            int size = Size;
-            for (int i = 0; i < size; i++)
-                for (int j = 0; j < size; j++)
-                    SetModule(i, j, Module.Types.Data);
-
-            WriteFinderPatterns(this);
-            WriteSeparators(this);
-            WriteVersionInformation(this);
-            WriteTiming(this);
-            WriteAlignments(this);
-            WriteDarkModule(this);
-            WriteEmptyFormatInformation(this);
         }
 
         //Read method
@@ -343,13 +335,12 @@ namespace QRCodes
         }
         private static int Penalty1(QRCode qrcode)
         {
-            //109
             int penalty = 0;
             int size = qrcode.Size;
 
             //Condition 1
             int consecutiv;
-            Module.Status last;
+            Module.Status last, current;
 
             //Horizontal
             for (int i = 0; i < size; i++)
@@ -358,15 +349,19 @@ namespace QRCodes
                 last = qrcode.GetModule(i, 0).State;
 
                 for (int j = 1; j < size; j++)
-                    if (qrcode.GetModule(i, j).State == last)
+                {
+                    current = qrcode.GetModule(i, j).State;
+
+                    if (current == last)
                         consecutiv++;
                     else
                     {
                         if (consecutiv >= 5)
                             penalty += consecutiv - 2;
-                        last = qrcode.GetModule(i, j).State;
+                        last = current;
                         consecutiv = 1;
                     }
+                }
 
                 if (consecutiv >= 5)
                     penalty += consecutiv - 2;
@@ -379,16 +374,20 @@ namespace QRCodes
                 last = qrcode.GetModule(0, j).State;
 
                 for (int i = 1; i < size; i++)
-                    if (qrcode.GetModule(i, j).State == last)
+                {
+                    current = qrcode.GetModule(i, j).State;
+
+                    if (current == last)
                         consecutiv++;
                     else
                     {
                         if (consecutiv >= 5)
                             penalty += consecutiv - 2;
 
-                        last = qrcode.GetModule(i, j).State;
+                        last = current;
                         consecutiv = 1;
                     }
+                }
 
                 if (consecutiv >= 5)
                     penalty += consecutiv - 2;
@@ -417,37 +416,31 @@ namespace QRCodes
         }
         private static int Penalty3(QRCode qrcode)
         {
-            Module.Status d = Module.Status.Disabled;
-            Module.Status e = Module.Status.Enabled;
+            Module.Status w = Module.Status.White;
+            Module.Status b = Module.Status.Black;
 
-            Module.Status[] pattern1 = { e, d, e, e, e, d, e, d, d, d, d };
-            Module.Status[] pattern2 = { d, d, d, d, e, d, e, e, e, d, e };
+            Module.Status[] pattern1 = { b, w, b, b, b, w, b, w, w, w, w };
+            Module.Status[] pattern2 = { w, w, w, w, b, w, b, b, b, w, b };
 
-            int penalty = (PatternCount(qrcode, pattern1) + PatternCount(qrcode, pattern2)) * 40;
-            return penalty;
+            return (PatternCount(qrcode, pattern1) + PatternCount(qrcode, pattern2)) * 40; ;
         }
         private static int Penalty4(QRCode qrcode)
         {
-            int totalModules = qrcode.Size * qrcode.Size;
             int darkModules = 0;
+            int whiteModules = 0;
 
             foreach (Module module in qrcode.modules)
-                if (module.IsBlack)
-                    darkModules++;
+                if (module.IsBlack) darkModules++;
+                else if (module.IsWhite) whiteModules++;
 
-            int percent = (darkModules * 100) / totalModules;
-
+            int percent = (int)((darkModules*100.0) / (double)(darkModules + whiteModules));
             int previous = percent - percent % 5;
             int next = previous + 5;
 
-            previous = Math.Abs(previous - 50);
-            next = Math.Abs(next - 50);
+            previous = Math.Abs(previous - 50) / 5;
+            next = Math.Abs(next - 50) / 5;
 
-            previous /= 5;
-            next /= 5;
-
-            int penalty = Math.Min(previous, next) * 10;
-            return penalty;
+            return Math.Min(previous, next) * 10;
         }
         private static int PatternCount(QRCode qrcode, Module.Status[] pattern)
         {
@@ -490,6 +483,21 @@ namespace QRCodes
         }
 
         //Write methods
+        private void WriteModules()
+        {
+            int size = Size;
+            for (int i = 0; i < size; i++)
+                for (int j = 0; j < size; j++)
+                    SetModule(i, j, Module.Types.Data);
+
+            WriteFinderPatterns(this);
+            WriteSeparators(this);
+            WriteVersionInformation(this);
+            WriteTiming(this);
+            WriteAlignments(this);
+            WriteDarkModule(this);
+            WriteEmptyFormatInformation(this);
+        }
         private static void WriteFinderPatterns(QRCode qrcode)
         {
             WriteFinderPattern(qrcode, 0, 0);
@@ -501,11 +509,11 @@ namespace QRCodes
             for (int i = 0; i < 7; i++)
                 for (int j = 0; j < 7; j++)
                     if (i == 0 || j == 0 || i == 6 || j == 6)
-                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.Enabled);
+                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.Black);
                     else if (i >= 2 && i <= 4 && j >= 2 && j <= 4)
-                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.Enabled);
+                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.Black);
                     else
-                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.Disabled);
+                        qrcode.SetModule(i + y, j + x, Module.Types.FinderPattern, Module.Status.White);
         }
         private static void WriteSeparators(QRCode qrcode)
         {
@@ -513,14 +521,14 @@ namespace QRCodes
             for (int i = 0; i < 8; i++)
             {
                 //Top left
-                qrcode.SetModule(7, i, Module.Types.Separators, Module.Status.Disabled);
-                qrcode.SetModule(i, 7, Module.Types.Separators, Module.Status.Disabled);
+                qrcode.SetModule(7, i, Module.Types.Separators, Module.Status.White);
+                qrcode.SetModule(i, 7, Module.Types.Separators, Module.Status.White);
                 //Top Right
-                qrcode.SetModule(7, size - 8 + i, Module.Types.Separators, Module.Status.Disabled);
-                qrcode.SetModule(i, size - 8, Module.Types.Separators, Module.Status.Disabled);
+                qrcode.SetModule(7, size - 8 + i, Module.Types.Separators, Module.Status.White);
+                qrcode.SetModule(i, size - 8, Module.Types.Separators, Module.Status.White);
                 //Bottom left
-                qrcode.SetModule(size - 8, i, Module.Types.Separators, Module.Status.Disabled);
-                qrcode.SetModule(size - 8 + i, 7, Module.Types.Separators, Module.Status.Disabled);
+                qrcode.SetModule(size - 8, i, Module.Types.Separators, Module.Status.White);
+                qrcode.SetModule(size - 8 + i, 7, Module.Types.Separators, Module.Status.White);
             }
         }
         private static void WriteVersionInformation(QRCode qrcode)
@@ -538,7 +546,7 @@ namespace QRCodes
             {
                 i = index % 3;
                 j = index / 3;
-                state = data[index] ? Module.Status.Enabled : Module.Status.Disabled;
+                state = data[index] ? Module.Status.Black : Module.Status.White;
 
                 //First (left)
                 qrcode.SetModule(size - 9 - i, 5 - j, Module.Types.VersionInformation, state);
@@ -557,14 +565,14 @@ namespace QRCodes
 
             for (int i = 0; i <= 6; i++)
             {
-                status = data[i] ? Module.Status.Enabled : Module.Status.Disabled;
+                status = data[i] ? Module.Status.Black : Module.Status.White;
                 qrcode.SetModule(8, i == 6 ? 7 : i, Module.Types.FormatInformation, status);
                 qrcode.SetModule(size - 1 - i , 8, Module.Types.FormatInformation, status);
             }
 
             for (int i = 7; i < 15; i++)
             {
-                status = data[i] ? Module.Status.Enabled : Module.Status.Disabled;
+                status = data[i] ? Module.Status.Black : Module.Status.White;
                 qrcode.SetModule(15 - (i >= 9 ? i + 1 : i), 8, Module.Types.FormatInformation, status);
                 qrcode.SetModule(8, size - 15 + i, Module.Types.FormatInformation, status);
             }
@@ -589,8 +597,8 @@ namespace QRCodes
             int size = qrcode.Size;
             for (int i = 8; i < size - 8; i++)
             {
-                qrcode.SetModule(6, i, Module.Types.TimingPattern, i % 2 == 1 ? Module.Status.Disabled : Module.Status.Enabled);
-                qrcode.SetModule(size - 1 - i, 6, Module.Types.TimingPattern, i % 2 == 1 ? Module.Status.Disabled : Module.Status.Enabled);
+                qrcode.SetModule(6, i, Module.Types.TimingPattern, i % 2 == 1 ? Module.Status.White : Module.Status.Black);
+                qrcode.SetModule(size - 1 - i, 6, Module.Types.TimingPattern, i % 2 == 1 ? Module.Status.White : Module.Status.Black);
             }
         }
         private static void WriteAlignments(QRCode qrcode)
@@ -616,15 +624,15 @@ namespace QRCodes
             for (int i = 0; i < 5; i++)
                 for (int j = 0; j < 5; j++)
                     if (i == 0 || j == 0 || i == 4 || j == 4)
-                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.Enabled);
+                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.Black);
                     else if (i == 2 && j == 2)
-                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.Enabled);
+                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.Black);
                     else
-                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.Disabled);
+                        qrcode.SetModule(i + y - 2, j + x - 2, Module.Types.AlignmentPattern, Module.Status.White);
         }
         private static void WriteDarkModule(QRCode qrcode)
         {
-            qrcode.SetModule(qrcode.Size - 8, 8, Module.Types.DarkModule, Module.Status.Enabled);
+            qrcode.SetModule(qrcode.Size - 8, 8, Module.Types.DarkModule, Module.Status.Black);
         }
         private static void WritePayloadData(QRCode qrcode)
         {
@@ -637,7 +645,7 @@ namespace QRCodes
 
             while (iterator.HasNext())//End padding
             {
-                iterator.Current.State = Module.Status.Disabled;
+                iterator.Current.State = Module.Status.White;
                 iterator.Next();
             }
         }
@@ -724,90 +732,77 @@ namespace QRCodes
         {
             foreach (bool e in Utils.GetEndiannessBits(b, 8))
             {
-                iterator.Current.State = e ? Module.Status.Enabled : Module.Status.Disabled;
+                iterator.Current.State = e ? Module.Status.Black : Module.Status.White;
                 iterator.Next();
             }
         }
 
-
         //Mask method
-        private void Finalize(Mask mask)
+        private void ForceMask(Mask mask)
         {
             if (mask == null)
                 throw new ArgumentNullException(nameof(mask));
-            if (AppliedMask != null && AppliedMask.Type != mask.Type)
-                throw new ArgumentException("cannot combine mask.");
-
+            
             int size = Size;
             for (int i = 0; i < size; i++)
                 for (int j = 0; j < size; j++)
-                    if (GetModule(i, j).IsData && mask.Apply(i, j))
-                    {
-                        modules[i, j] = modules[i, j].Clone(false);
-                        modules[i, j].Switch();
-                        modules[i, j].Lock();
-                    }
-
-            if (AppliedMask != null)
-            {
-                AppliedMask = null;
-                WriteEmptyFormatInformation(this);
-            }
-            else
-            {
-                AppliedMask = mask;
-                WriteFormatInformation(this);
-            }
-
-            Penalty = CalculatePenalty(this);
+                    if (modules[i, j].IsData && mask.Apply(i, j))
+                        if (modules[i, j].Locked)
+                        {
+                            modules[i, j] = modules[i, j].Clone(false);
+                            modules[i, j].Switch();
+                            modules[i, j].Lock();
+                        }
+                        else
+                            modules[i, j].Switch();
         }
-        public QRCode Unmask()
+        private void Unmask()
         {
-            if (AppliedMask == null)
+            if (!IsMasked())
                 throw new ApplicationException("This QR code is already unmasked.");
 
-            QRCode copy = new(this);
-            copy.Finalize(this.AppliedMask);
-            return copy;
+            ForceMask(AppliedMask);
+            Penalty = 0;
+            AppliedMask = null;
         }
-        public QRCode Mask(Mask mask)
+        private void Mask(Mask mask)
         {
-            if (AppliedMask != null)
+            if (IsMasked())
                 throw new ApplicationException("This QR Code is already masked.");
 
-            QRCode copy = new(this);
-            copy.Finalize(mask);
-            return copy;
+            ForceMask(mask);
+            Penalty = CalculatePenalty(this);
+            AppliedMask = mask;
         }
-        private static Mask GetBestMask(QRCode qrcode)
+        private void ApplyBestMask()
         {
-            if (qrcode.IsMasked())
+            if (IsMasked())
                 throw new ApplicationException("this QR Code is already masked.");
 
-            int penalty = Int32.MaxValue, penaltyTemp;
-            Mask best = null, temp;
+            int bestPenalty = int.MaxValue;
+            Mask bestMask = null;
 
             for (int i = 0b000; i <= 0b111; i++)
             {
-                //Test
-                temp = new Mask(i);
-                qrcode.Finalize(temp);
-                penaltyTemp = qrcode.Penalty;
+                Mask(new Mask(i));
 
-                //Reset
-                qrcode.Finalize(temp);
-
-                if (penaltyTemp < penalty)
+                if (Penalty < bestPenalty)
                 {
-                    best = temp;
-                    penalty = penaltyTemp;
+                    bestPenalty = Penalty;
+                    bestMask = AppliedMask;
                 }
+
+                Unmask();
             }
 
-            return best;
+            Mask(bestMask);
         }
 
         //Methodes
+        public QRCode Clone()
+        {
+            return new QRCode(this);
+        }
         private void SetModule(int y, int x, Module.Types type, Module.Status state)
         {
             modules[y, x] = new Module(type, state);
@@ -826,7 +821,7 @@ namespace QRCodes
             BitMap image = new(size + 2 * margin, size + 2 * margin);
             for (int i = 0; i < size; i++)
                 for (int j = 0; j < size; j++)
-                    image.SetPixel(i + margin, j + margin, modules[size - 1 - i, j].Color);
+                    image.SetPixel(i + margin, j + margin, modules[i, j].Color);
             return image;
         }
         public BitMap ToBitMap()

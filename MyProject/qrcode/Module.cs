@@ -19,8 +19,9 @@ namespace QRCodes
         }
         public enum Status
         {
-            Enabled = 1,
-            Disabled = 2
+            Undefined = 0,
+            Black = 1,
+            White = 2
         }
 
         //Methodes statiques
@@ -30,8 +31,8 @@ namespace QRCodes
         }
 
         //Attributs
-        private Status state = 0;
-        public Types Type { get; private set; } = 0;
+        private Status state = Status.Undefined;
+        public Types Type { get; private set; }
         public Status State
         {
             get
@@ -52,30 +53,29 @@ namespace QRCodes
         { 
             get 
             {
-                if (state == 0)
-                    return Colors.RED;
-                else if (state == Status.Enabled)
+                if (state == Status.Undefined)
+                    return Colors.GRAY;
+                else if (state == Status.Black)
                     return Colors.BLACK;
-                else if (state == Status.Disabled)
+                else if (state == Status.White)
                     return Colors.WHITE;
                 throw new ApplicationException();//Should not be thrown
             } 
         }
         public bool Locked { get; private set; } = false;
-        public bool IsBlack { get { return State == Status.Enabled; } }
-        public bool IsWhite { get { return State == Status.Disabled; } }
+        public bool IsBlack { get { return State == Status.Black; } }
+        public bool IsWhite { get { return State == Status.White; } }
         public bool IsData { get { return Type == Types.Data; } }
 
         //Constructeurs
         public Module(Types type, Status state)
         {
-            if (IsPermanent(type) && state == 0)
+            if (IsPermanent(type) && state == Status.Undefined)
                 throw new ArgumentException("Type " + type + " is a permament type so state must be specified.");
             this.Type = type;
             this.state = state;
         }
-        public Module(Types type) : this(type, 0) { }
-        public Module() : this(Types.Data, 0) { }
+        public Module(Types type) : this(type, Status.Undefined) { }
         public Module(Module another, bool locked)
         {
             if (another == null)
@@ -101,10 +101,10 @@ namespace QRCodes
         }
         public void Switch()
         {
-            if (State == Status.Disabled)
-                State = Status.Enabled;
-            else if (State == Status.Enabled)
-                State = Status.Disabled;
+            if (State == Status.White)
+                State = Status.Black;
+            else if (State == Status.Black)
+                State = Status.White;
         }
     }
 }

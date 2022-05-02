@@ -19,7 +19,7 @@ namespace QRCodes
         public bool Apply(int y, int x)
         {
             //Formulas
-            if (Type == 0)
+             if (Type == 0)
                 return (x + y) % 2 == 0;
             else if (Type == 1)
                 return (y % 2) == 0;

@@ -5,70 +5,42 @@ namespace Bitmap
     class Histogram
     {
         //Variables
-        private int[] R = new int[256];
-        private int[] B = new int[256];
-        private int[] G = new int[256];
-
+        private int[] tab = new int[256];
+        
         //Constructeurs
         public Histogram(BitMap image)
         {
             if (image == null)
                 throw new ArgumentNullException("image may not be null.");
 
-            Color color;
             for (int i = 0; i < image.Height; i++)
                 for (int j = 0; j < image.Width;j++)
-                {
-                    color = image.GetPixel(i, j);
-                    R[color.R]++;
-                    G[color.G]++;
-                    B[color.B]++;
-                }
+                    tab[image.GetPixel(i,j).Gray()]++;
         }
 
         //Methodes
         public BitMap ToBitmap()
         {
             BitMap image = new(200, 256);
-            int scale = Math.Max(MaxBlue(), Math.Max(MaxGreen(), MaxRed()));
+            double scale = Max(tab);
+            int t;
 
-            int tR, tB, tG;
+            Color color;
             for (int  x = 0; x < 256; x++)
             {
-                tR = (int)(((double)R[x] / scale) * 200.0);
-                tB = (int)(((double)B[x] / scale) * 200.0);
-                tG = (int)(((double)G[x] / scale) * 200.0);
+                t = (int)((tab[x] / scale) * 200.0);
+                color = new((byte)(64 + x / 2), 0, 0);
 
-                for (int y = 0;  y < 200; y++)
-                    image.SetPixel(y, x, new Color(
-                        (byte)(y < tR ? 0x55 : 0xFF),
-                        (byte)(y < tG ? 0x55 : 0xFF),
-                        (byte)(y < tB ? 0x55 : 0xFF)
-                    ));
+                for (int y = 0; y < t; y++)
+                    image.SetPixel(199 - y, x, color);
             }
 
             return image;
         }
-        public int MaxBlue()
+        private static int Max(int[] array)
         {
-            int max = 0;
-            foreach (int e in B)
-                if (e > max)
-                    max = e;
-            return max;
-        }
-        public int MaxRed()
-        {
-            int max = 0;
-            foreach (int e in R)
-                if (e > max)
-                    max = e;
-            return max;
-        }
-        public int MaxGreen()
-        {
-            int max = 0;
-            foreach (int e in G)
+            int max = int.MinValue;
+            foreach (int e in array)
                 if (e > max)
                     max = e;
             return max;

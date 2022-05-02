@@ -19,8 +19,7 @@ namespace MyProject
         //Methodes statiques
         internal static BitmapImage ToBitmapImage(string filename)
         {
-            string pd = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
-            return ToBitmapImage(new BitMap(pd + "/resources/" + filename));
+            return ToBitmapImage(new BitMap(Environment.CurrentDirectory + "/resources/" + filename));
         }
         internal static BitmapImage ToBitmapImage(BitMap bitmap)
         {
