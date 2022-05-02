@@ -54,7 +54,7 @@ namespace QRCodes
             get 
             {
                 if (state == Status.Undefined)
-                    return Colors.GRAY;
+                    return Type == Types.Data ? Colors.LIGHT_GRAY : Colors.GRAY;
                 else if (state == Status.Black)
                     return Colors.BLACK;
                 else if (state == Status.White)

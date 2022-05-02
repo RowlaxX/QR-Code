@@ -158,7 +158,7 @@ namespace QRCodes
             this.modules = new Module[Size, Size];
 
             //Writing modules
-            WriteModules();
+            WriteDefaultModules();
             WritePayloadData(this);
 
             //Applying mask
@@ -175,7 +175,7 @@ namespace QRCodes
         {
             this.Informations = new QRCodeInformation(version);
             this.modules = new Module[Size, Size];
-            WriteModules();
+            WriteDefaultModules();
         }
         private QRCode(QRCode another)
         {
@@ -483,7 +483,7 @@ namespace QRCodes
         }
 
         //Write methods
-        private void WriteModules()
+        private void WriteDefaultModules()
         {
             int size = Size;
             for (int i = 0; i < size; i++)
@@ -496,7 +496,7 @@ namespace QRCodes
             WriteTiming(this);
             WriteAlignments(this);
             WriteDarkModule(this);
-            WriteEmptyFormatInformation(this);
+            WriteFormatInformation(this);
         }
         private static void WriteFinderPatterns(QRCode qrcode)
         {
@@ -559,37 +559,27 @@ namespace QRCodes
             int size = qrcode.Size;
             ErrorCorrection.Levels ecLevel = qrcode.Informations.ErrorCorrection.Level;
             Mask mask = qrcode.AppliedMask;
-            bool[] data = Utils.GetEndiannessBits(Format.GetFormatInformation(ecLevel, mask), 15);
+            Module.Status[] data = new Module.Status[15]!;
 
-            Module.Status status;
-
+            if (mask == null)
+                for (int i = 0; i < 15; i++)
+                    data[i] = Module.Status.Undefined;
+            else {
+                bool[] bit = Utils.GetEndiannessBits(Format.GetFormatInformation(ecLevel, mask), 15);
+                for (int i = 0; i < 15; i++)
+                    data[i] = bit[i] ? Module.Status.Black : Module.Status.White;
+            }
+ 
             for (int i = 0; i <= 6; i++)
             {
-                status = data[i] ? Module.Status.Black : Module.Status.White;
-                qrcode.SetModule(8, i == 6 ? 7 : i, Module.Types.FormatInformation, status);
-                qrcode.SetModule(size - 1 - i , 8, Module.Types.FormatInformation, status);
+                qrcode.SetModule(8, i == 6 ? 7 : i, Module.Types.FormatInformation, data[i]);
+                qrcode.SetModule(size - 1 - i , 8, Module.Types.FormatInformation, data[i]);
             }
 
             for (int i = 7; i < 15; i++)
             {
-                status = data[i] ? Module.Status.Black : Module.Status.White;
-                qrcode.SetModule(15 - (i >= 9 ? i + 1 : i), 8, Module.Types.FormatInformation, status);
-                qrcode.SetModule(8, size - 15 + i, Module.Types.FormatInformation, status);
-            }
-        }
-        private static void WriteEmptyFormatInformation(QRCode qrcode)
-        {
-            int size = qrcode.Size;
-            for (int i = 0; i <= 6; i++)
-            {
-                qrcode.SetModule(8, i == 6 ? 7 : i, Module.Types.FormatInformation);
-                qrcode.SetModule(size - 1 - i, 8, Module.Types.FormatInformation, 0);
-            }
-
-            for (int i = 7; i < 15; i++)
-            {
-                qrcode.SetModule(15 - (i >= 9 ? i + 1 : i), 8, Module.Types.FormatInformation);
-                qrcode.SetModule(8, size - 15 + i, Module.Types.FormatInformation);
+                qrcode.SetModule(15 - (i >= 9 ? i + 1 : i), 8, Module.Types.FormatInformation, data[i]);
+                qrcode.SetModule(8, size - 15 + i, Module.Types.FormatInformation, data[i]);
             }
         }
         private static void WriteTiming(QRCode qrcode)
@@ -764,6 +754,7 @@ namespace QRCodes
             ForceMask(AppliedMask);
             Penalty = 0;
             AppliedMask = null;
+            WriteFormatInformation(this);
         }
         private void Mask(Mask mask)
         {
@@ -773,6 +764,7 @@ namespace QRCodes
             ForceMask(mask);
             Penalty = CalculatePenalty(this);
             AppliedMask = mask;
+            WriteFormatInformation(this);
         }
         private void ApplyBestMask()
         {

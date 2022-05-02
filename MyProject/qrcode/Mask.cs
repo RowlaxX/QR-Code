@@ -28,7 +28,7 @@ namespace QRCodes
             else if (Type == 3)
                 return (y + x) % 3 == 0;
             else if (Type == 4)
-                return (x / 2 + y / 3) % 2 == 0;
+                return (y / 2 + x / 3) % 2 == 0;
             else if (Type == 5)
                 return (x * y) % 2 + (x * y) % 3 == 0;
             else if (Type == 6)
