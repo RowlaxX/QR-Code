@@ -44,21 +44,19 @@ namespace QRCodes
             //Reading from matrice
             int version = ReadVersion(area);
             Format.ECMInfo ecmInfo = ReadECM(area);
-            ErrorCorrection.Levels ecLevel = ecmInfo.ECLevel;
             Mask mask = ecmInfo.Mask;            
             QRCode qrcode = new(version);
             Payload payload = ReadPayload(area, qrcode.DataModuleIterator(), ecmInfo);
 
             //Editing QR Code
-            qrcode.Informations = new QRCodeInformation(version, payload, mask, ecLevel);
+            qrcode.Informations = new QRCodeInformation(version, payload, mask, ecmInfo.ECLevel);
             WritePayloadData(qrcode);
+            qrcode.Mask();
 
             //Locking
             foreach (Module m in qrcode.modules)
                 m.Lock();
 
-            //Finalizing
-            qrcode.Mask(mask);
             return qrcode;
         }
         public static QRCode Read(BitMap image)
@@ -162,10 +160,7 @@ namespace QRCodes
             WritePayloadData(this);
 
             //Applying mask
-            if (infos.AutoMask)
-                ApplyBestMask();
-            else
-                Mask(infos.Mask);
+            Mask();
 
             //Locking
             foreach (Module m in modules)
@@ -765,6 +760,13 @@ namespace QRCodes
             Penalty = CalculatePenalty(this);
             AppliedMask = mask;
             WriteFormatInformation(this);
+        }
+        private void Mask()
+        {
+            if (Informations.AutoMask)
+                ApplyBestMask();
+            else
+                Mask(Informations.Mask);
         }
         private void ApplyBestMask()
         {
