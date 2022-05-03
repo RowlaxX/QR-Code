@@ -185,7 +185,7 @@ namespace MyProject.ui
             StringBuilder sb = new();
             sb.AppendLine("Version : " + qr.Version);
             sb.AppendLine("Encodage : " + qr.Informations.EncodingType);
-            sb.AppendLine("Masque : " + qr.AppliedMask.Type);
+            sb.AppendLine("Masque : " + (qr.IsMasked() ? qr.AppliedMask.Type : "aucun"));
             sb.AppendLine("EC : " + qr.Informations.ErrorCorrection.Level);
             sb.AppendLine("Penalité : " + qr.Penalty);
 

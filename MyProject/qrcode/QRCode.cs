@@ -5,6 +5,7 @@ using Bitmap;
 using QRCodes.Reader;
 using System.Text;
 using System.IO;
+using System.Windows;
 
 namespace QRCodes
 {

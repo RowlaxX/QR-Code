@@ -51,7 +51,6 @@ namespace MyProject.ui
 
             info.Content = sb.ToString();
             payload.Text = qr.Payload.Content;
-            MainWindow.Output = reader.Binarized;
         }
     }
 }
